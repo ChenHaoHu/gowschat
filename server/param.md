@@ -7,7 +7,8 @@
 {
 "uid":"111",
 "touid":"222",
-"msg":"hello jyj"
+"msg":"hello jyj",
+"msgtype":0
 }
 ```
 
@@ -16,6 +17,7 @@
 {
 "uid":"222",
 "touid":"111",
-"msg":"hello hcy"
+"msg":"hello hcy",
+"msgtype":0
 }
 ```

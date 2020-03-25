@@ -27,3 +27,13 @@ func ParseToken(token string) (*Member, error) {
 
 	return nil, errors.New("token error")
 }
+
+func CheckInden(request *RequestEntity, member *Member) error {
+	if member.Uid == request.Uid {
+		return nil
+
+	}
+
+	return errors.New("you do not have power")
+
+}

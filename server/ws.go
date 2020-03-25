@@ -38,9 +38,19 @@ func HandleWS(c *gin.Context) {
 	AddMember(member)
 	log.Println("member name :", member.Name, "member uid :", member.Uid, " login ok")
 
+	//check EnableNotifyAllWhenLogin
+	if EnableNotifyAllWhenLogin {
+		msg := &Msg{member.Uid, member.Uid, "member name :" + member.Name + "member uid :" + member.Uid + " login ok", N2A}
+		AddMsg(msg)
+	}
+
 	defer func(member *Member) {
 		DeleMember(member.Uid)
 		log.Println("member name :", member.Name, "member uid :", member.Uid, " logout ok")
+		if EnableNotifyAllWhenLogout {
+			msg := &Msg{member.Uid, member.Uid, "member name :" + member.Name + "member uid :" + member.Uid + " logout ok", N2A}
+			AddMsg(msg)
+		}
 		conn.WriteMessage(websocket.CloseMessage,
 			websocket.FormatCloseMessage(websocket.CloseNormalClosure, "json err"))
 		conn.Close()
@@ -55,10 +65,26 @@ func HandleWS(c *gin.Context) {
 			return
 		}
 
-		if d.Msg != "" {
-			//log.Println("add msg")
-			MsgQueue <- &Msg{d.Uid, d.ToUid, d.Msg}
+		err = CheckInden(d, member)
+
+		var msg *Msg
+
+		if err != nil {
+			msg = &Msg{member.Uid, member.Uid, "you do not have power", N2P}
+		} else {
+			msg, err = parseRequestEntity(d)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+
 		}
+
+		AddMsg(msg)
+		// if d.Msg != "" {
+		// 	//log.Println("add msg")
+		// 	MsgQueue <- msg
+		// }
 
 	}
 

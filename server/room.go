@@ -6,9 +6,10 @@ import (
 )
 
 type Msg struct {
-	Uid   string
-	ToUid string
-	Msg   string
+	Uid     string
+	ToUid   string
+	Msg     string
+	MsgType int
 }
 
 //var MemberQueue map[string]*Member
@@ -28,7 +29,7 @@ func init() {
 	memberqueue.m = make(map[string]*Member)
 	//MemberQueue = make(map[string]*Member)
 	MsgQueue = make(chan *Msg, MsgQueusMAX)
-	go HanleMsg()
+	go HandleMsg()
 }
 
 func AddMember(member *Member) {
@@ -38,9 +39,13 @@ func AddMember(member *Member) {
 	memberqueue.m[member.Uid] = member
 }
 
+func GetAllOnLineMember() map[string]*Member {
+	return memberqueue.m
+}
+
 func GetMember(uid string) *Member {
-	memberqueue.RLock()
-	defer memberqueue.RUnlock()
+	// memberqueue.RLock()
+	// defer memberqueue.RUnlock()
 
 	if _, ok := memberqueue.m[uid]; ok {
 		return memberqueue.m[uid]
@@ -59,7 +64,7 @@ func AddMsg(msg *Msg) {
 	MsgQueue <- msg
 }
 
-func HanleMsg() {
+func HandleMsg() {
 	for {
 		msg := <-MsgQueue
 		go sendMsg(msg)
@@ -67,21 +72,73 @@ func HanleMsg() {
 }
 
 func sendMsg(msg *Msg) {
+	switch msg.MsgType {
+	case P2P:
+		sendP2PMsg(msg)
+	case P2A:
+		sendP2AMsg(msg)
+	case N2A:
+		sendN2AMsg(msg)
+	case N2P:
+		sendN2PMsg(msg)
+	default:
+		return
+	}
+}
+
+func sendP2PMsg(msg *Msg) {
 	rm := GetMember(msg.ToUid)
 	if rm == nil {
 		if msg.Uid != msg.ToUid {
 			log.Println("member : ", msg.ToUid, " not on line or no existence")
 			msg.ToUid = msg.Uid
 			msg.Msg = "member : " + msg.ToUid + " not on line or no existence"
-			sendMsg(msg)
+			sendN2PMsg(msg)
 		}
 		return
 	}
 	con := rm.Conn
-	res := &ResponseEntity{msg.Uid, msg.ToUid, msg.Msg}
+	res := &ResponseEntity{msg.Uid, msg.ToUid, msg.Msg, msg.MsgType}
 	err := con.WriteJSON(res)
 	if err != nil {
 		log.Printf("write fail = %v\n", err)
 		return
 	}
+}
+
+func sendP2AMsg(msg *Msg) {
+	msg.ToUid = "ALL"
+	members := GetAllOnLineMember()
+	for _, v := range members {
+		go func(rm *Member) {
+			con := rm.Conn
+			res := &ResponseEntity{msg.Uid, msg.ToUid, msg.Msg, msg.MsgType}
+			err := con.WriteJSON(res)
+			if err != nil {
+				log.Printf("write fail = %v\n", err)
+				return
+			}
+		}(v)
+	}
+}
+func sendN2AMsg(msg *Msg) {
+	msg.Uid = "NOTICE"
+	msg.ToUid = "ALL"
+	members := GetAllOnLineMember()
+	for _, v := range members {
+		go func(rm *Member) {
+			con := rm.Conn
+			res := &ResponseEntity{msg.Uid, msg.ToUid, msg.Msg, msg.MsgType}
+			err := con.WriteJSON(res)
+			if err != nil {
+				log.Printf("write fail = %v\n", err)
+				return
+			}
+		}(v)
+	}
+}
+func sendN2PMsg(msg *Msg) {
+	msg.ToUid = msg.Uid
+	msg.Uid = "NOTICE"
+	sendP2PMsg(msg)
 }
