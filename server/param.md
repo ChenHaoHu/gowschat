@@ -4,21 +4,29 @@
 > token:{UID},{NAME},{Group}
 
 > play1 ws://127.0.0.1:8080/ws/111,hcy,aaa
+
+```
+	P2P            //somone msg to notify somone 0
+	P2G            // somone msg to notify group 1
+	N2G            // msg to notify all 2
+	N2A            // msg to notify all 3
+	N2P            // msg to notify someone 4
+```
+
 ```json
 {
     "touid": "222",
     "msg": "hello sssssssssssss",
-    "sendtype": 0
+    "sendtype": 0    
 }
 ```
 
 > play2 ws://127.0.0.1:8080/ws/222,jyj,aaa
 ```json
 {
-    "uid": "222",
-    "touid": "111",
-	"msg": "hello hcy",
-	"sendtype": 0
+    "touid": "222",
+    "msg": "hello sssssssssssss",
+    "sendtype": 0
 }
 ```
 
