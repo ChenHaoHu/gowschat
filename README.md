@@ -14,5 +14,5 @@
 
 [API文档](server/param.md)
 
-!["演示页面"](./img/show.png)
+![演示页面](./img/show.png)
 
