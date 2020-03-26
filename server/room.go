@@ -78,6 +78,11 @@ func GetAllOnLineMember() map[string]*MemberQueue {
 }
 
 func GetGropOnLineMember(gid string) map[string]*Member {
+
+	if groupqueue.g[gid] == nil {
+		return nil
+	}
+
 	return groupqueue.g[gid].m
 }
 
