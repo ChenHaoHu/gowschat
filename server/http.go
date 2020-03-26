@@ -1,21 +1,46 @@
 package server
 
 import (
-	"log"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
 
-func HandleHttp(c *gin.Context) {
-	e := groupqueue.g
+func HandleGroup(c *gin.Context) {
+	groups := groupqueue.g
+	data := make(map[string]interface{})
 
-	for a, b := range e {
-		log.Print(a)
-		for _, d := range b.m {
-			log.Println(d.Uid, d.Name, d.LoginTime)
-		}
-
+	for index, key := range groups {
+		data[index] = key.m
 	}
+
+	c.JSON(200, gin.H{
+		"status":  "ok",
+		"message": data,
+	})
+}
+
+func HandleNotice(c *gin.Context) {
+
+	sendtype, _ := strconv.Atoi(c.PostForm("sendtype"))
+	gid := c.PostForm("gid")
+	msg := c.PostForm("msg")
+	uid := c.PostForm("uid")
+
+	if sendtype < N2G {
+		c.JSON(200, gin.H{
+			"status": "sendtype can not smaller by " + string(N2G),
+		})
+		return
+	}
+
+	AddMsg(&Msg{
+		Uid:      "NOTICE",
+		ToUid:    uid,
+		Gid:      gid,
+		Msg:      msg,
+		SendType: sendtype,
+	})
 
 	c.JSON(200, gin.H{
 		"status": "ok",

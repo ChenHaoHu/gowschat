@@ -17,11 +17,10 @@ var upgrader = websocket.Upgrader{
 func StartServer(port int) {
 	r := gin.Default()
 
-	// websocket echo
 	r.Any("/ws/:token", HandleWS)
 
-	// http echo
-	r.GET("/http", HandleHttp)
+	r.POST("/chat/notice", HandleNotice)
+	r.GET("/chat/group", HandleGroup)
 
 	r.Run(":" + strconv.Itoa(port))
 }

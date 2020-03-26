@@ -12,7 +12,7 @@ type Member struct {
 	Uid       string
 	Name      string
 	Conn      *websocket.Conn
-	LoginTime time.Time
+	LoginTime string
 }
 
 func ParseToken(token string) (*Member, string, error) {
@@ -24,7 +24,7 @@ func ParseToken(token string) (*Member, string, error) {
 		return &Member{
 			Uid:       strs[0],
 			Name:      strs[1],
-			LoginTime: time.Now(),
+			LoginTime: time.Now().Format("Jan 02, 2006 15:04:05 UTC"),
 		}, "ALL", nil
 	}
 
@@ -33,7 +33,7 @@ func ParseToken(token string) (*Member, string, error) {
 		return &Member{
 			Uid:       strs[0],
 			Name:      strs[1],
-			LoginTime: time.Now(),
+			LoginTime: time.Now().Format("Jan 02, 2006 15:04:05 UTC"),
 		}, strs[2], nil
 	}
 
