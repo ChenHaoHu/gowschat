@@ -1,11 +1,23 @@
 package server
 
 import (
-	"io"
+	"log"
 
 	"github.com/gin-gonic/gin"
 )
 
 func HandleHttp(c *gin.Context) {
-	io.Copy(c.Writer, c.Request.Body)
+	e := groupqueue.g
+
+	for a, b := range e {
+		log.Print(a)
+		for _, d := range b.m {
+			log.Println(d.Uid, d.Name, d.LoginTime)
+		}
+
+	}
+
+	c.JSON(200, gin.H{
+		"status": "ok",
+	})
 }
