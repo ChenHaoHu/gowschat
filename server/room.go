@@ -87,7 +87,7 @@ func handleMemberMsg(gid string, uid string) {
 			log.Println("close membermsgqueue :", gid, "  ", uid)
 			return
 		}
-		log.Println(gid, uid, " 收到来自 ", msg.Uid, " 的消息")
+		log.Println("gid: ", gid, "uid: ", uid, " 收到来自 ", msg.Uid, " 的消息")
 
 		sendP2PMsgDirect(msg, member)
 	}
@@ -107,7 +107,7 @@ func sendP2PMsgDirect(msg *Msg, member *Member) {
 		log.Printf("write fail = %v\n", err)
 		return
 	} else {
-		log.Println(res.Uid, " 成功发送消息给 ", res.ToUid, " : "+res.Msg)
+		log.Println("gid: ", res.Gid, "uid: ", res.Uid, " 成功发送消息给 ", res.ToUid, " : "+res.Msg)
 	}
 }
 
