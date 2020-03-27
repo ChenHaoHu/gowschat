@@ -14,12 +14,12 @@ type ResponseEntity struct {
 	SendType int
 }
 
-func parseRequestEntity(request *RequestEntity, member *Member, gid string) (*Msg, error) {
+func parseRequestEntity(request *RequestEntity, member *Member) (*Msg, error) {
 
 	return &Msg{
 		Uid:      member.Uid,
 		ToUid:    request.ToUid,
-		Gid:      gid,
+		Gid:      member.Gid,
 		Msg:      request.Msg,
 		SendType: request.SendType,
 	}, nil

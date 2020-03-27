@@ -8,15 +8,15 @@ import (
 
 func HandleGroup(c *gin.Context) {
 	groups := groupqueue.g
-	data := make(map[string]interface{})
+	data1 := make(map[string]interface{})
 
 	for index, key := range groups {
-		data[index] = key.m
+		data1[index] = key.m
 	}
 
 	c.JSON(200, gin.H{
-		"status":  "ok",
-		"message": data,
+		"status": "ok",
+		"groups": data1,
 	})
 }
 

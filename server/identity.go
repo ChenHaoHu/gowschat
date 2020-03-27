@@ -4,18 +4,9 @@ import (
 	"errors"
 	"strings"
 	"time"
-
-	"github.com/gorilla/websocket"
 )
 
-type Member struct {
-	Uid       string
-	Name      string
-	Conn      *websocket.Conn
-	LoginTime string
-}
-
-func ParseToken(token string) (*Member, string, error) {
+func ParseToken(token string) (*Member, error) {
 
 	strs := strings.Split(token, ",")
 
@@ -24,8 +15,9 @@ func ParseToken(token string) (*Member, string, error) {
 		return &Member{
 			Uid:       strs[0],
 			Name:      strs[1],
+			Gid:       "ALL",
 			LoginTime: time.Now().Format("Jan 02, 2006 15:04:05 UTC"),
-		}, "ALL", nil
+		}, nil
 	}
 
 	if len(strs) == 3 {
@@ -33,14 +25,15 @@ func ParseToken(token string) (*Member, string, error) {
 		return &Member{
 			Uid:       strs[0],
 			Name:      strs[1],
+			Gid:       strs[2],
 			LoginTime: time.Now().Format("Jan 02, 2006 15:04:05 UTC"),
-		}, strs[2], nil
+		}, nil
 	}
 
-	return nil, "", errors.New("token error")
+	return nil, errors.New("token error")
 }
 
-func CheckInden(request *RequestEntity, member *Member, gid string) error {
+func CheckInden(request *RequestEntity, member *Member) error {
 
 	//return errors.New("you do not have power")
 

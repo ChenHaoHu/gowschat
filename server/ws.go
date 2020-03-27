@@ -29,25 +29,25 @@ func HandleWS(c *gin.Context) {
 	}
 
 	//parse token
-	member, gid, err := ParseToken(userIdent.Token)
+	member, err := ParseToken(userIdent.Token)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 	member.Conn = conn
-	AddMember(member, gid)
-	log.Println("member name :", member.Name, " member gid :", gid, " member uid :", member.Uid, " login ok")
+	AddMember(member)
+	log.Println("member name :", member.Name, " member gid :", member.Gid, " member uid :", member.Uid, " login ok")
 
 	//check EnableNotifyAllWhenLogin
 	if EnableNotifyAllWhenLogin {
-		msg := &Msg{member.Uid, member.Uid, gid, " member name :" + member.Name + " member uid :" +
+		msg := &Msg{member.Uid, member.Uid, member.Gid," member name :" + member.Name + " member uid :" +
 			member.Uid + " login ok", N2G}
 		AddMsg(msg)
 	}
 
 	defer func(member *Member) {
 		if EnableNotifyAllWhenLogout {
-			msg := &Msg{member.Uid, member.Uid, gid, "member name :" + member.Name + " member uid :" +
+			msg := &Msg{member.Uid, member.Uid,member.Gid, "member name :" + member.Name + " member uid :" +
 				member.Uid + " logout ok", N2G}
 			AddMsg(msg)
 		}
@@ -64,8 +64,8 @@ func HandleWS(c *gin.Context) {
 		err := conn.ReadJSON(d)
 
 		if err != nil {
-			DeleMember(member.Uid, gid)
-			log.Println("member name :", member.Name, " member uid :", member.Uid, " logout ok")
+			DeleMember(member)
+			log.Println("member name :", member.Name, " member gid :", member.Gid," member uid :", member.Uid, " logout ok")
 
 			log.Printf("read fail = %v\n", err)
 			return
@@ -83,14 +83,14 @@ func HandleWS(c *gin.Context) {
 		}
 
 		//check authority
-		err = CheckInden(d, member, gid)
+		err = CheckInden(d, member)
 
 		var msg *Msg
 
 		if err != nil {
-			msg = &Msg{member.Uid, member.Uid, gid, err.Error(), N2P}
+			msg = &Msg{member.Uid, member.Uid, member.Gid, err.Error(), N2P}
 		} else {
-			msg, err = parseRequestEntity(d, member, gid)
+			msg, err = parseRequestEntity(d, member)
 			if err != nil {
 				log.Println(err)
 				return

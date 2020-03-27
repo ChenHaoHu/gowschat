@@ -40,84 +40,10 @@ func init() {
 	groupqueue.g = make(map[string]*MemberQueue)
 	groupqueue.g["ALL"] = &MemberQueue{m: make(map[string]*Member)}
 
+	groupmsgqueue.g = make(map[string]*MemberMsgQueue)
+
 	MsgQueue = make(chan *Msg, MsgQueusMAX)
 	go HandleMsg()
-}
-
-func AddMember(member *Member, gid string) {
-
-	memberqueue := groupqueue.g[gid]
-
-	if memberqueue == nil {
-		memberqueue = &MemberQueue{m: make(map[string]*Member)}
-	}
-
-	memberqueue.RLock()
-	defer memberqueue.RUnlock()
-
-	oldmember := memberqueue.m[member.Uid]
-	//	log.Println(oldmember)
-
-	if oldmember != nil {
-		//close conn
-
-		// sendN2PMsg(&Msg{Uid: oldmember.Uid, ToUid: oldmember.Uid, Gid: gid,
-		// 	Msg: "Your account is repeatedly logged in in this group", SendType: N2P})
-
-		oldmember.Conn.Close()
-
-	}
-
-	memberqueue.m[member.Uid] = member
-	groupqueue.g[gid] = memberqueue
-
-}
-
-func GetAllOnLineMember() map[string]*MemberQueue {
-	return groupqueue.g
-}
-
-func GetGropOnLineMember(gid string) map[string]*Member {
-
-	if groupqueue.g[gid] == nil {
-		return nil
-	}
-
-	return groupqueue.g[gid].m
-}
-
-func GetMember(uid string, gid string) *Member {
-	// memberqueue.RLock()
-	// defer memberqueue.RUnlock()
-
-	memberqueue := groupqueue.g[gid]
-
-	if memberqueue == nil {
-		return nil
-	}
-
-	if _, ok := memberqueue.m[uid]; ok {
-		return memberqueue.m[uid]
-	}
-
-	return nil
-}
-
-func DeleMember(uid string, gid string) {
-
-	memberqueue := groupqueue.g[gid]
-
-	if memberqueue == nil {
-		return
-	}
-
-	memberqueue.RLock()
-	defer memberqueue.RUnlock()
-	delete(memberqueue.m, uid)
-
-	if len(memberqueue.m) == 0 {
-		delete(groupqueue.g, gid)
-	}
 }
 
 func AddMsg(msg *Msg) {
@@ -127,11 +53,13 @@ func AddMsg(msg *Msg) {
 func HandleMsg() {
 	for {
 		msg := <-MsgQueue
-		go sendMsg(msg)
+		//consider need or not need be go
+		sendMsg(msg)
 	}
 }
 
 func sendMsg(msg *Msg) {
+
 	switch msg.SendType {
 	case P2P:
 		sendP2PMsg(msg)
@@ -148,39 +76,86 @@ func sendMsg(msg *Msg) {
 	}
 }
 
-func sendP2PMsg(msg *Msg) {
-	rm := GetMember(msg.ToUid, msg.Gid)
-	if rm == nil {
-		if msg.Uid != msg.ToUid {
-			log.Println("member : ", msg.ToUid, " in ", msg.Gid, " not on line or no existence")
-			msg.ToUid = msg.Uid
-			msg.Msg = "member : " + msg.ToUid + " in " + msg.Gid + " not on line or no existence"
-			sendN2PMsg(msg)
+func handleMemberMsg(gid string, uid string) {
+	membermsgqueue, _ := GetMemberMsgQueue(gid, uid)
+	//get member  conn
+	member := GetMember(uid, gid)
+
+	for {
+		msg, flag := <-membermsgqueue
+		if flag == false {
+			log.Println("close membermsgqueue :", gid, "  ", uid)
+			return
 		}
-		return
+		log.Println(gid, uid, " 收到来自 ", msg.Uid, " 的消息")
+
+		sendP2PMsgDirect(msg, member)
 	}
-	con := rm.Conn
-	res := &ResponseEntity{msg.Uid, msg.ToUid, msg.Gid, msg.Msg, msg.SendType}
+}
+
+func sendP2PMsgDirect(msg *Msg, member *Member) {
+	con := member.Conn
+	res := &ResponseEntity{
+		Uid:      msg.Uid,
+		ToUid:    msg.ToUid,
+		Gid:      msg.Gid,
+		Msg:      msg.Msg,
+		SendType: msg.SendType,
+	}
 	err := con.WriteJSON(res)
 	if err != nil {
 		log.Printf("write fail = %v\n", err)
 		return
+	} else {
+		log.Println(res.Uid, " 成功发送消息给 ", res.ToUid, " : "+res.Msg)
 	}
+}
+
+func sendP2PMsg(msg *Msg) {
+	// member := GetMember(msg.ToUid, msg.Gid)
+	// if member == nil {
+	// 	if msg.Uid != msg.ToUid {
+	// 		log.Println("member : ", msg.ToUid, " in ", msg.Gid, " not on line or no existence")
+	// 		msg.ToUid = msg.Uid
+	// 		msg.Msg = "member : " + msg.ToUid + " in " + msg.Gid + " not on line or no existence"
+	// 		sendN2PMsg(msg)
+	// 	}
+	// 	return
+	// }
+	//get member msg channel
+	membermsgqueue, err := GetMemberMsgQueue(msg.Gid, msg.ToUid)
+	if err != nil {
+		//send notice
+		msg.Msg = "member : " + msg.ToUid + " in " + msg.Gid + " not on line or no existence"
+		msg.ToUid = msg.Uid
+		msg.SendType = N2P
+		AddMsg(msg)
+		return
+	}
+	membermsgqueue <- msg
 }
 
 func sendP2GMsg(msg *Msg) {
 	msg.ToUid = "GroupALL"
 	members := GetGropOnLineMember(msg.Gid)
 	for _, v := range members {
-		go func(rm *Member) {
-			con := rm.Conn
-			res := &ResponseEntity{msg.Uid, msg.ToUid, msg.Gid, msg.Msg, msg.SendType}
-			err := con.WriteJSON(res)
-			if err != nil {
-				log.Printf("write fail = %v\n", err)
+		//go sendP2PMsgDirect(msg, v)
+		membermsgqueue, err := GetMemberMsgQueue(v.Gid, v.Uid)
+		if err != nil {
+			//send notice
+			msg.Msg = "member : " + msg.ToUid + " in " + msg.Gid + " not on line or no existence"
+			if msg.ToUid == msg.Uid {
 				return
 			}
-		}(v)
+			msg.ToUid = msg.Uid
+			msg.SendType = N2P
+			if msg.ToUid == msg.Uid {
+				return
+			}
+			AddMsg(msg)
+			return
+		}
+		membermsgqueue <- msg
 	}
 }
 
@@ -197,15 +172,19 @@ func sendN2AMsg(msg *Msg) {
 	for _, v := range groups {
 		// log.Println(len(v.m))
 		for _, i := range v.m {
-			go func(rm *Member) {
-				con := rm.Conn
-				res := &ResponseEntity{msg.Uid, msg.ToUid, msg.Gid, msg.Msg, msg.SendType}
-				err := con.WriteJSON(res)
-				if err != nil {
-					log.Printf("write fail = %v\n", err)
+			membermsgqueue, err := GetMemberMsgQueue(i.Gid, i.Uid)
+			if err != nil {
+				//send notice
+				msg.Msg = "member : " + msg.ToUid + " in " + msg.Gid + " not on line or no existence"
+				msg.ToUid = msg.Uid
+				msg.SendType = N2P
+				if msg.ToUid == msg.Uid {
 					return
 				}
-			}(i)
+				AddMsg(msg)
+				return
+			}
+			membermsgqueue <- msg
 		}
 	}
 
