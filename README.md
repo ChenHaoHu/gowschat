@@ -16,6 +16,27 @@
 
 > 说明
 
+```shell
+$ go  run main.go -h
+Usage of /var/folders/0z/d90ql8410qvd6pf8vcsdzbxc0000gn/T/go-build984855082/b001/exe/main:
+  -h	this help
+  -u string
+    	if you set the value, app will check token with it
+    	    this api must be:    https: / http:// {{host}}:{{port}}/XXXXX
+
+    	    app will request  https: / http:// {{host}}:{{port}}/XXXXX?token=XXXXXXX
+
+
+    	    you must response
+
+    	    {
+    	      status: int,    ## 0:ok 1:error
+    	      gid:    string,
+    	      name:   string,
+    	      uid:    string,
+    	    }
+
+```
 
 
 App —> Group —> Member

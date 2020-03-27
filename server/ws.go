@@ -20,18 +20,27 @@ func HandleWS(c *gin.Context) {
 		return
 	}
 
+
+	defer func(){
+		conn.WriteMessage(websocket.CloseMessage,
+		websocket.FormatCloseMessage(websocket.CloseNormalClosure, "json err"))
+		conn.Close()
+
+	}()
+
 	//conn ok
 	//get token
 	var userIdent UserIdent
 	if err := c.ShouldBindUri(&userIdent); err != nil {
 		c.JSON(400, gin.H{"msg": err})
+		conn.WriteMessage(websocket.TextMessage,[]byte(err.Error()))
 		return
 	}
 
 	//parse token
 	member, err := ParseToken(userIdent.Token)
 	if err != nil {
-		log.Println(err)
+		conn.WriteMessage(websocket.TextMessage,[]byte(err.Error()))
 		return
 	}
 	member.Conn = conn
@@ -51,12 +60,7 @@ func HandleWS(c *gin.Context) {
 				member.Uid + " logout ok", N2G}
 			AddMsg(msg)
 		}
-		conn.WriteMessage(websocket.CloseMessage,
-			websocket.FormatCloseMessage(websocket.CloseNormalClosure, "json err"))
-		conn.Close()
-
-		defer recover()
-
+	
 	}(member)
 
 	for {

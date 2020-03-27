@@ -29,7 +29,7 @@
           </el-col>
           <el-col :span="4">
             <el-form-item label="CLOSE">
-              <el-button type="primary" @click="close">OUT</el-button>
+              <el-button type="primary" @click="out">OUT</el-button>
               </el-input>
             </el-form-item>
           </el-col>
@@ -119,6 +119,9 @@ export default {
     }
   },
   methods: {
+    out(){
+      this.socket.close()
+    },
     link: function(e) {
       if (typeof(WebSocket) === "undefined") {
         alert("您的浏览器不支持socket")
