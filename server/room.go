@@ -14,8 +14,6 @@ type Msg struct {
 	SendType int
 }
 
-//var MemberQueue map[string]*Member
-
 type GroupQueue struct {
 	sync.RWMutex
 	g map[string]*MemberQueue
@@ -26,7 +24,6 @@ type MemberQueue struct {
 	m map[string]*Member
 }
 
-//var memberqueue MemberQueue
 var groupqueue GroupQueue
 
 var MsgQueue chan *Msg
@@ -34,13 +31,9 @@ var MsgQueue chan *Msg
 var MsgQueusMAX = 20
 
 func init() {
-	//memberqueue.m = make(map[string]*Member)
 
-	//MemberQueue = make(map[string]*Member)
 	groupqueue.g = make(map[string]*MemberQueue)
 	groupqueue.g["ALL"] = &MemberQueue{m: make(map[string]*Member)}
-
-	groupmsgqueue.g = make(map[string]*MemberMsgQueue)
 
 	MsgQueue = make(chan *Msg, MsgQueusMAX)
 	go HandleMsg()
@@ -76,11 +69,10 @@ func sendMsg(msg *Msg) {
 	}
 }
 
-func handleMemberMsg(gid string, uid string) {
-	membermsgqueue, _ := GetMemberMsgQueue(gid, uid)
-	//get member  conn
-	member := GetMember(uid, gid)
-
+func handleMemberMsg(member *Member) {
+	membermsgqueue := member.MsgQueue
+	gid := member.Gid
+	uid := member.Uid
 	for {
 		msg, flag := <-membermsgqueue
 		if flag == false {
@@ -112,21 +104,11 @@ func sendP2PMsgDirect(msg *Msg, member *Member) {
 }
 
 func sendP2PMsg(msg *Msg) {
-	// member := GetMember(msg.ToUid, msg.Gid)
-	// if member == nil {
-	// 	if msg.Uid != msg.ToUid {
-	// 		log.Println("member : ", msg.ToUid, " in ", msg.Gid, " not on line or no existence")
-	// 		msg.ToUid = msg.Uid
-	// 		msg.Msg = "member : " + msg.ToUid + " in " + msg.Gid + " not on line or no existence"
-	// 		sendN2PMsg(msg)
-	// 	}
-	// 	return
-	// }
-	//get member msg channel
+
 	membermsgqueue, err := GetMemberMsgQueue(msg.Gid, msg.ToUid)
 	if err != nil {
 		//send notice
-		msg.Msg = "member : " + msg.ToUid + " in " + msg.Gid + " not on line or no existence"
+		msg.Msg = "member : " + msg.ToUid + " in " + msg.Gid + " not on line or no existence " + err.Error()
 		msg.ToUid = msg.Uid
 		msg.SendType = N2P
 		AddMsg(msg)
@@ -140,22 +122,7 @@ func sendP2GMsg(msg *Msg) {
 	members := GetGropOnLineMember(msg.Gid)
 	for _, v := range members {
 		//go sendP2PMsgDirect(msg, v)
-		membermsgqueue, err := GetMemberMsgQueue(v.Gid, v.Uid)
-		if err != nil {
-			//send notice
-			msg.Msg = "member : " + msg.ToUid + " in " + msg.Gid + " not on line or no existence"
-			if msg.ToUid == msg.Uid {
-				return
-			}
-			msg.ToUid = msg.Uid
-			msg.SendType = N2P
-			if msg.ToUid == msg.Uid {
-				return
-			}
-			AddMsg(msg)
-			return
-		}
-		membermsgqueue <- msg
+		v.SendMsg(msg)
 	}
 }
 
@@ -170,21 +137,8 @@ func sendN2AMsg(msg *Msg) {
 	msg.ToUid = "ALL"
 	groups := GetAllOnLineMember()
 	for _, v := range groups {
-		// log.Println(len(v.m))
 		for _, i := range v.m {
-			membermsgqueue, err := GetMemberMsgQueue(i.Gid, i.Uid)
-			if err != nil {
-				//send notice
-				msg.Msg = "member : " + msg.ToUid + " in " + msg.Gid + " not on line or no existence"
-				msg.ToUid = msg.Uid
-				msg.SendType = N2P
-				if msg.ToUid == msg.Uid {
-					return
-				}
-				AddMsg(msg)
-				return
-			}
-			membermsgqueue <- msg
+			i.SendMsg(msg)
 		}
 	}
 
@@ -192,7 +146,6 @@ func sendN2AMsg(msg *Msg) {
 }
 
 func sendN2PMsg(msg *Msg) {
-	//msg.ToUid = msg.Uid
 	msg.Uid = "NOTICE"
 	sendP2PMsg(msg)
 }
