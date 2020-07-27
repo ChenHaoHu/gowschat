@@ -2,10 +2,17 @@ package server
 
 import (
 	"log"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
+
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
 
 type UserIdent struct {
 	Token string `uri:"token" binding:"required"`
@@ -14,100 +21,65 @@ type UserIdent struct {
 func HandleWS(c *gin.Context) {
 	r := c.Request
 	w := c.Writer
-	conn, err := upgrader.Upgrade(w, r, nil)
+	wsconn, err := upgrader.Upgrade(w, r, nil)
+	conn := NewConn(wsconn)
 	if err != nil {
 		log.Printf("err = %s\n", err)
 		return
 	}
 
-
-	defer func(){
-		conn.WriteMessage(websocket.CloseMessage,
-		websocket.FormatCloseMessage(websocket.CloseNormalClosure, "json err"))
+	defer func() {
+		//结束消息
+		//conn.Link.WriteMessage(websocket.CloseMessage,
+		//	websocket.FormatCloseMessage(websocket.CloseNormalClosure, "json err"))
 		conn.Close()
-
 	}()
 
 	//conn ok
 	//get token
 	var userIdent UserIdent
 	if err := c.ShouldBindUri(&userIdent); err != nil {
-		c.JSON(400, gin.H{"msg": err})
-		conn.WriteMessage(websocket.TextMessage,[]byte(err.Error()))
+		//c.JSON(400, gin.H{"msg": err})
+		conn.Link.WriteMessage(websocket.TextMessage, []byte(err.Error()))
 		return
 	}
 
 	//parse token
-	member, err := ParseToken(userIdent.Token)
+	client, err := ParseToken(userIdent.Token)
 	if err != nil {
-		conn.WriteMessage(websocket.TextMessage,[]byte(err.Error()))
+		conn.Link.WriteMessage(websocket.TextMessage, []byte(err.Error()))
 		return
 	}
-	member.Conn = conn
-	AddMember(member)
-	log.Println("member name :", member.Name, " member gid :", member.Gid, " member uid :", member.Uid, " login ok")
+
+	client.Conn = conn
+
+	//new a msg queue
+	msgQueue, _ := NewMsgQueue()
+	client.MsgQueue = msgQueue
 
 	//check EnableNotifyAllWhenLogin
 	if EnableNotifyAllWhenLogin {
-		msg := &Msg{member.Uid, member.Uid, member.Gid," member name :" + member.Name + " member uid :" +
-			member.Uid + " login ok", N2G}
-		AddMsg(msg)
+		msg := &Msg{client.Uid, client.Uid, client.Gid, " client name :" + client.Name + " client uid :" +
+			client.Uid + " login ok", N2G}
+		client.SendMsg(msg)
 	}
 
-	defer func(member *Member) {
+	defer func(client *Client) {
 		if EnableNotifyAllWhenLogout {
-			msg := &Msg{member.Uid, member.Uid,member.Gid, "member name :" + member.Name + " member uid :" +
-				member.Uid + " logout ok", N2G}
-			AddMsg(msg)
-		}
-	
-	}(member)
+			msg := &Msg{client.Uid, client.Uid, client.Gid, "client name :" + client.Name + " client uid :" +
+				client.Uid + " logout ok", N2G}
 
-	for {
-		d := &RequestEntity{}
-		err := conn.ReadJSON(d)
-
-		if err != nil {
-			DeleMember(member)
-			log.Println("member name :", member.Name, " member gid :", member.Gid," member uid :", member.Uid, " logout ok")
-
-			log.Printf("read fail = %v\n", err)
-			return
-
-			// if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-
-			// } else {
-			// 	// log.Printf("read fail = %v\n", err)
-			// 	// return
-			// 	msg := &Msg{member.Uid, member.Uid, gid, "Request Entity is not json or wrong format", N2A}
-			// 	AddMsg(msg)
-			// 	continue
-			// }
-
+			client.SendMsg(msg)
 		}
 
-		//check authority
-		err = CheckInden(d, member)
+	}(client)
 
-		var msg *Msg
+	group.RegisterClientToGroup(client)
 
-		if err != nil {
-			msg = &Msg{member.Uid, member.Uid, member.Gid, err.Error(), N2P}
-		} else {
-			msg, err = parseRequestEntity(d, member)
-			if err != nil {
-				log.Println(err)
-				return
-			}
+	//AddClient(client)
+	go client.ReciveData()
+	go client.WriteData()
 
-		}
-
-		AddMsg(msg)
-		// if d.Msg != "" {
-		// 	//log.Println("add msg")
-		// 	MsgQueue <- msg
-		// }
-
-	}
+	<-client.CloseRequest
 
 }

@@ -39,7 +39,7 @@ Usage of /var/folders/0z/d90ql8410qvd6pf8vcsdzbxc0000gn/T/go-build984855082/b001
 ```
 
 
-App —> Group —> Member
+App —> Group —> Client
 
 全局 —>   群组  —>    成员
 

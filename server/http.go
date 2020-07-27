@@ -1,23 +1,26 @@
 package server
 
 import (
-	"strconv"
-
+	"fmt"
 	"github.com/gin-gonic/gin"
+	"strconv"
 )
 
 func HandleGroup(c *gin.Context) {
-	groups := groupqueue.g
-	data1 := make(map[string]interface{})
+	groups := group.g
+	//data1 := make(map[string]interface{})
 
 	for index, key := range groups {
-		data1[index] = key.m
+		//data1[index] = key.m
+		fmt.Println(index, " ----- ")
+		fmt.Printf("%+v\n", key)
+
 	}
 
-	c.JSON(200, gin.H{
-		"status": "ok",
-		"groups": data1,
-	})
+	//c.JSON(200, gin.H{
+	//	"status": "ok",
+	//	"groups": data1,
+	//})
 }
 
 func HandleNotice(c *gin.Context) {
@@ -34,13 +37,13 @@ func HandleNotice(c *gin.Context) {
 		return
 	}
 
-	AddMsg(&Msg{
+	SendMsg(&Msg{
 		Uid:      "NOTICE",
 		ToUid:    uid,
 		Gid:      gid,
 		Msg:      msg,
 		SendType: sendtype,
-	})
+	}, nil)
 
 	c.JSON(200, gin.H{
 		"status": "ok",

@@ -18,13 +18,13 @@ type TokenStruct struct {
 	Uid    string
 }
 
-func ParseToken(token string) (*Member, error) {
+func ParseToken(token string) (*Client, error) {
 
 	if TokenUrl == "" {
 		return defaultParseToken(token)
 	}
 
-	client := &http.Client{}
+	client := http.Client{}
 
 	url := TokenUrl + "?token=" + token
 	reqest, err := http.NewRequest("GET", url, nil)
@@ -57,11 +57,13 @@ func ParseToken(token string) (*Member, error) {
 			return nil, errors.New("token 不合法\\没权限")
 		}
 
-		return &Member{
-			Uid:       data.Uid,
-			Name:      data.Name,
-			Gid:       data.Gid,
-			LoginTime: time.Now().Format("Jan 02, 2006 15:04:05 UTC"),
+		return &Client{
+			Uid:          data.Uid,
+			Name:         data.Name,
+			Gid:          data.Gid,
+			LoginTime:    time.Now().Format("Jan 02, 2006 15:04:05 UTC"),
+			CloseWrite:   make(chan int, 2),
+			CloseRequest: make(chan int, 2),
 		}, nil
 
 	} else {
@@ -71,34 +73,38 @@ func ParseToken(token string) (*Member, error) {
 	//return nil, errors.New("token error")
 }
 
-func defaultParseToken(token string) (*Member, error) {
+func defaultParseToken(token string) (*Client, error) {
 
 	strs := strings.Split(token, ",")
 
 	if len(strs) == 2 {
 
-		return &Member{
-			Uid:       strs[0],
-			Name:      strs[1],
-			Gid:       "ALL",
-			LoginTime: time.Now().Format("Jan 02, 2006 15:04:05 UTC"),
+		return &Client{
+			Uid:          strs[0],
+			Name:         strs[1],
+			Gid:          "ALL",
+			LoginTime:    time.Now().Format("Jan 02, 2006 15:04:05 UTC"),
+			CloseWrite:   make(chan int, 2),
+			CloseRequest: make(chan int, 2),
 		}, nil
 	}
 
 	if len(strs) == 3 {
 
-		return &Member{
-			Uid:       strs[0],
-			Name:      strs[1],
-			Gid:       strs[2],
-			LoginTime: time.Now().Format("Jan 02, 2006 15:04:05 UTC"),
+		return &Client{
+			Uid:          strs[0],
+			Name:         strs[1],
+			Gid:          strs[2],
+			LoginTime:    time.Now().Format("Jan 02, 2006 15:04:05 UTC"),
+			CloseWrite:   make(chan int, 2),
+			CloseRequest: make(chan int, 2),
 		}, nil
 	}
 
 	return nil, errors.New("token can not check pass")
 }
 
-func CheckInden(request *RequestEntity, member *Member) error {
+func CheckInden(request *RequestEntity, Client *Client) error {
 
 	//return errors.New("you do not have power")
 
