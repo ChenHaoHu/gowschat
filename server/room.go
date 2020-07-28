@@ -48,20 +48,24 @@ func sendP2PMsgDirect(msg *Msg, client *Client) {
 	}
 }
 
-func sendP2PMsg(msg *Msg, client *Client) {
+func sendP2PMsg(msg *Msg, sendClient *Client) {
 
-	sendP2PMsgDirect(msg, client)
+	revClient, err := GetClient(msg.ToUid, msg.Gid)
 
-	//if err != nil {
-	//	//send notice
-	//	if msg.SendType == P2P {
-	//		msg.Msg = "Client : " + msg.ToUid + " in " + msg.Gid + " not on line or no existence " + err.Error()
-	//		msg.ToUid = msg.Uid
-	//		msg.SendType = N2P
-	//		sendN2PMsg(msg)
-	//	}
-	//	return
-	//}
+	//sendP2PMsgDirect(msg, client)
+
+	if err != nil {
+		//send notice
+		if msg.SendType == P2P {
+			msg.Msg = "Client : " + msg.ToUid + " in " + msg.Gid + " not on line or no existence " + err.Error()
+			msg.ToUid = msg.Uid
+			msg.SendType = N2P
+			sendP2PMsgDirect(msg, sendClient)
+		}
+		return
+	}
+
+	sendP2PMsgDirect(msg, revClient)
 
 }
 
@@ -85,7 +89,8 @@ func sendN2AMsg(msg *Msg) {
 	groups := GetAllOnLineClient()
 	for _, v := range groups {
 		for _, i := range v.m {
-			i.SendMsg(msg)
+			//i.SendMsg(msg)
+			go sendP2PMsgDirect(msg, i)
 		}
 	}
 
